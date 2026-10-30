@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>홀리버튼 보드게임</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: 포스터 배너 → 홀리버튼(랜덤 추천) → 인원/장르 필터 → 게임 타일 그리드 → 상세 시트(dialog) */
+:root{
+  --ink:#170a36;        /* 포스터 바탕 보라 */
+  --panel:#24124f;
+  --panel-2:#311a6b;
+  --line:#4a2f93;
+  --lime:#d8f23c;
+  --cyan:#33d6f2;
+  --violet:#9a4dff;
+  --text:#f4f0ff;
+  --muted:#b8a8e8;
+  --display:"Black Han Sans","Gothic A1","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --body:"Gothic A1","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--ink);color:var(--text)}
+body{
+  font-family:var(--body);font-size:15px;line-height:1.6;
+  background:
+    radial-gradient(1200px 500px at 85% -10%, rgba(154,77,255,.35), transparent 60%),
+    radial-gradient(900px 500px at -10% 30%, rgba(51,214,242,.12), transparent 60%),
+    var(--ink);
+  background-attachment:fixed;
+}
+.wrap{max-width:480px;margin:0 auto;padding-block:14px 48px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  display:flex;flex-direction:column;gap:28px}
+
+/* 포스터 */
+.poster{position:relative;border-radius:18px;overflow:hidden;border:3px solid var(--lime);
+  box-shadow:8px 8px 0 var(--violet);aspect-ratio:1200/676;max-width:100%;background:var(--panel)}
+.poster img{display:block;width:100%;height:100%;object-fit:cover}
+
+/* 버튼 섹션 */
+.hero{display:grid;grid-template-columns:1fr;gap:16px;justify-items:center;text-align:center;
+  background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:20px 18px}
+.hero h1{font-family:var(--display);font-weight:400;font-size:clamp(26px,4.4vw,40px);line-height:1.15;margin:0;text-wrap:balance}
+.hero h1 em{font-style:normal;color:var(--lime)}
+.hero p{margin:6px 0 0;color:var(--muted)}
+.stats{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin-top:12px;font-size:13px;color:var(--muted)}
+.stats b{color:var(--cyan);font-size:18px;font-variant-numeric:tabular-nums;margin-right:2px}
+
+.holy{position:relative;width:150px;height:150px;border-radius:50%;border:0;cursor:pointer;
+  background:radial-gradient(circle at 50% 70%, #1a8fa6 0 60%, #0d5866 61%);
+  padding:0;display:grid;place-items:center;flex:none}
+.holy span{width:118px;height:104px;border-radius:50%;margin-top:-14px;
+  background:radial-gradient(circle at 35% 30%, #c79bff 0 8%, var(--violet) 30%, #5a1fc0 100%);
+  box-shadow:0 14px 0 #3d118a, inset 0 -6px 12px rgba(0,0,0,.25);
+  display:grid;place-items:center;font-family:var(--display);font-size:20px;color:#fff;line-height:1.1;text-align:center;
+  transition:transform .08s, box-shadow .08s}
+.holy:hover span{filter:brightness(1.08)}
+.holy:active span{transform:translateY(10px);box-shadow:0 4px 0 #3d118a, inset 0 -6px 12px rgba(0,0,0,.25)}
+.holy:focus-visible{outline:3px solid var(--lime);outline-offset:6px}
+.btnwrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.btnwrap small{font-size:12px;color:var(--muted)}
+
+.pick{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
+  background:var(--lime);color:var(--ink);border-radius:12px;padding:12px 16px;font-weight:700}
+.pick[hidden]{display:none}
+.pick strong{font-family:var(--display);font-weight:400;font-size:24px}
+.pick button{margin-left:auto;background:var(--ink);color:var(--lime);border:0;border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer}
+.pick button:focus-visible{outline:3px solid var(--violet);outline-offset:2px}
+
+/* 필터 */
+.filters{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.row.scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+.row.scroll::-webkit-scrollbar{display:none}
+.row.scroll .lab{flex:none;min-width:auto}
+.chip{flex:none;white-space:nowrap}
+.row .lab{font-family:var(--display);font-size:16px;color:var(--lime);min-width:68px}
+.search{flex:1;min-width:0;font-size:16px;background:var(--panel);border:2px solid var(--line);color:var(--text);
+  border-radius:12px;padding:10px 14px;font:inherit}
+.search::placeholder{color:var(--muted)}
+.search:focus{outline:none;border-color:var(--cyan)}
+.chip{background:transparent;color:var(--text);border:2px solid var(--line);border-radius:999px;
+  padding:9px 15px;font:inherit;font-size:15px;cursor:pointer;font-weight:500}
+.chip:hover{border-color:var(--cyan)}
+.chip[aria-pressed="true"]{background:var(--cyan);border-color:var(--cyan);color:var(--ink);font-weight:800}
+.chip:focus-visible{outline:3px solid var(--lime);outline-offset:2px}
+.count{font-size:13px;color:var(--muted)}
+
+/* 그리드 */
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+.tile{position:relative;text-align:left;background:var(--panel);border:2px solid var(--line);border-radius:14px;
+  padding:16px 16px 14px;color:var(--text);font:inherit;cursor:pointer;display:flex;flex-direction:column;gap:8px;
+  transition:transform .12s, border-color .12s, box-shadow .12s;min-width:0}
+.tile:hover{transform:translate(-2px,-2px);border-color:var(--lime);box-shadow:4px 4px 0 var(--lime)}
+.tile:focus-visible{outline:3px solid var(--lime);outline-offset:3px}
+.tile h3{margin:0;font-family:var(--display);font-weight:400;font-size:23px;line-height:1.2;padding-right:44px}
+.tile .one{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:4px}
+.tag{font-size:12px;font-weight:700;border-radius:6px;padding:2px 8px;background:var(--panel-2);color:var(--text);font-variant-numeric:tabular-nums}
+.tag.g{background:transparent;border:1px solid var(--violet);color:#d6c2ff}
+.copies{position:absolute;top:12px;right:12px;font-family:var(--display);font-size:15px;
+  background:var(--lime);color:var(--ink);border-radius:8px;padding:1px 8px;transform:rotate(4deg)}
+.copies i{font-style:normal;font-family:var(--body);font-size:10px;font-weight:800;display:block;line-height:1;text-align:center;padding-bottom:3px}
+.dots{display:inline-flex;gap:3px;align-items:center}
+.dots b{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.dots b.on{background:var(--cyan)}
+.empty{grid-column:1/-1;text-align:center;padding:40px 16px;color:var(--muted);border:2px dashed var(--line);border-radius:14px}
+
+/* 상세 */
+dialog{border:0;padding:0;background:transparent;color:var(--text);width:100%;max-width:480px;max-height:92dvh;margin:auto auto 0}
+dialog::backdrop{background:rgba(10,4,28,.75)}
+.sheet{background:var(--panel);border:3px solid var(--lime);border-bottom:0;border-radius:22px 22px 0 0;
+  padding:20px 18px calc(28px + env(safe-area-inset-bottom, 0px));max-height:92dvh;overflow:auto;display:flex;flex-direction:column;gap:16px;
+  box-sizing:border-box;-webkit-overflow-scrolling:touch}
+.sheet header{display:flex;gap:12px;align-items:flex-start}
+.sheet h2{margin:0;font-family:var(--display);font-weight:400;font-size:32px;line-height:1.15;flex:1;text-wrap:balance}
+.close{background:var(--panel-2);color:var(--text);border:0;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;flex:none}
+.close:focus-visible{outline:3px solid var(--lime)}
+.facts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.fact{background:var(--ink);border-radius:10px;padding:8px 10px}
+.fact span{display:block;font-size:11px;letter-spacing:.06em;color:var(--muted)}
+.fact b{font-size:15px;font-variant-numeric:tabular-nums}
+.sec h4{margin:0 0 6px;font-family:var(--display);font-weight:400;font-size:18px;color:var(--cyan)}
+.sec p{margin:0}
+.sec ol,.sec ul{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:4px}
+.sec li::marker{color:var(--lime);font-weight:800}
+.win{background:var(--lime);color:var(--ink);border-radius:12px;padding:12px 14px}
+.win h4{color:var(--ink)}
+.tip{border-left:4px solid var(--violet);padding:4px 0 4px 12px;color:#e2d6ff}
+.note{font-size:13px;color:var(--muted)}
+.vwrap{border-radius:14px;overflow:hidden;border:3px solid var(--cyan);background:#000;aspect-ratio:16/9;max-width:100%}
+.vwrap{position:relative;flex:none;width:100%;min-height:190px}
+.playbig{position:absolute;inset:0;margin:auto;width:100%;height:100%;border:0;background:rgba(23,10,54,.35);color:var(--lime);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:var(--display)}
+.playbig[hidden]{display:none}
+.playbig i{font-style:normal;font-size:30px;width:68px;height:68px;border-radius:50%;background:var(--lime);color:var(--ink);display:grid;place-items:center;padding-left:5px}
+.playbig span{font-size:18px;font-weight:400;text-shadow:0 2px 6px #000}
+.vopen{display:block;text-align:center;font-size:13px;color:var(--cyan);margin:8px 0 0}
+.vwrap video{display:block;width:100%;height:100%;background:#000}
+.soon{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;
+  aspect-ratio:16/9;max-width:100%;border:3px dashed var(--line);border-radius:14px;background:var(--ink);color:var(--muted)}
+.soon b{font-family:var(--display);font-weight:400;font-size:24px;color:var(--lime)}
+.soon span{font-size:14px}
+.ytlink{align-self:flex-start;color:var(--cyan);font-size:14px;font-weight:700;text-decoration:none;padding:6px 0}
+.ytlink:focus-visible{outline:3px solid var(--lime);outline-offset:3px}
+.tag.v{background:var(--lime);color:var(--ink)}
+
+
+/* 관리자 */
+.tile.dim{opacity:.55}
+.tag.st{background:var(--pink,#ff4d8d);color:#fff}
+.stnote{margin:0;padding:8px 12px;border-radius:10px;background:var(--panel-2);color:var(--text);font-size:14px}
+.adminbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel-2);border:2px dashed var(--lime);border-radius:12px;padding:8px 12px}
+.adminbar b{font-family:var(--display);font-weight:400;color:var(--lime)}
+.adminbar button,.admin button,.formbtns button,.admtoggle{font:inherit;font-size:14px;font-weight:700;cursor:pointer;border-radius:999px;border:2px solid var(--line);background:transparent;color:var(--text);padding:7px 14px;min-height:40px}
+.adminbar button{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.admin{border:2px dashed var(--lime);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;background:rgba(216,242,60,.05)}
+.adm-t{font-family:var(--display);color:var(--lime);font-size:15px}
+.adm-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.adm-row>span,.f>span{font-size:12px;color:var(--muted);font-weight:700}
+.adm-row.btns button[data-a=edit]{background:var(--cyan);border-color:var(--cyan);color:var(--ink)}
+.admin .danger{border-color:var(--pink,#ff4d8d);color:var(--pink,#ff4d8d)}
+.step{display:inline-flex;align-items:center;gap:6px}
+.step button{width:40px;padding:0;font-size:20px;line-height:1}
+.step b{min-width:26px;text-align:center;font-size:18px;font-variant-numeric:tabular-nums}
+.seg{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-start}
+.seg button{font:inherit;font-size:14px;font-weight:700;padding:7px 12px;min-height:40px;border-radius:999px;border:2px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--cyan);border-color:var(--cyan);color:var(--ink)}
+.form{display:flex;flex-direction:column;gap:12px}
+.f{display:flex;flex-direction:column;gap:4px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f input,.f textarea{font:inherit;font-size:16px;background:var(--ink);border:2px solid var(--line);color:var(--text);border-radius:10px;padding:9px 12px;width:100%;box-sizing:border-box;resize:vertical}
+.f input:focus,.f textarea:focus{outline:none;border-color:var(--cyan)}
+.formbtns{display:flex;gap:10px}
+.formbtns .primary{flex:1;background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.admtoggle{margin-top:10px;font-size:12px;min-height:34px;color:var(--muted)}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--lime);color:var(--ink);font-weight:800;padding:10px 18px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:.2s;z-index:1000;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+footer{text-align:center;font-size:13px;color:var(--muted)}
+footer b{font-family:var(--display);font-weight:400;color:var(--lime);font-size:16px;letter-spacing:.04em}
+
+.sheet h2{font-size:27px}
+.close{width:44px;height:44px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@keyframes pop{0%{transform:scale(.9);opacity:.4}100%{transform:scale(1);opacity:1}}
+.pick.show{animation:pop .25s ease-out}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <div class="poster"><img src="video/poster.jpg" width="1200" height="676" alt="북구 청년회 홀리버튼 포스터 — 믿음으로 모여, 즐거움을 켜다!"></div>
+
+  <section class="hero" aria-labelledby="h1">
+    <div>
+      <h1 id="h1">오늘 뭐 하지? <em>버튼</em>이 골라줄게요</h1>
+      <p>아래에서 인원을 고르고 버튼을 누르면 지금 할 수 있는 게임을 하나 뽑아 줘요. 게임 카드를 누르면 규칙이 바로 나오고, 규칙 영상도 볼 수 있어요.</p>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="btnwrap">
+      <button class="holy" id="holy" type="button" aria-label="게임 하나 뽑기"><span>PUSH!</span></button>
+      <small>홀리 버튼</small>
+    </div>
+    <div class="pick" id="pick" hidden></div>
+  </section>
+
+  <section class="filters" aria-label="게임 찾기">
+    <div class="row">
+      <span class="lab">찾기</span>
+      <input class="search" id="q" type="search" placeholder="게임 이름으로 검색 (예: 루미)" autocomplete="off">
+    </div>
+    <div class="row scroll" id="people"><span class="lab">몇 명?</span></div>
+    <div class="row scroll" id="genres"><span class="lab">장르</span></div>
+    <div class="count" id="count"></div>
+  </section>
+
+  <section class="grid" id="grid" aria-live="polite"></section>
+
+  <footer><b>HOLY BUTTON</b><br>북구 청년회 · 믿음으로 모여, 즐거움을 켜다!</footer>
+</div>
+
+<dialog id="dlg" aria-labelledby="dtitle">
+  <div class="sheet" id="sheet"></div>
+</dialog>
+
+<script>
+const BASE = [
+ {id:"rummikub",name:"루미큐브",copies:3,coming:1,min:2,max:4,time:"30~60분",mins:45,age:"7세+",level:1,genre:["전략"],
+  one:"숫자 타일로 같은 색 연속, 또는 같은 숫자 묶음을 만들어 먼저 손을 털어요.",
+  setup:"타일을 모두 뒤집어 섞고 한 사람당 14개씩 가져가 거치대에 세워요.",
+  steps:["내 차례에 타일을 내려놓을 수 있어요. ‘런’(같은 색 연속 숫자 3개 이상, 예: 빨강 4·5·6)이나 ‘그룹’(같은 숫자 다른 색 3~4개, 예: 7 빨강·파랑·검정)만 인정돼요.",
+         "처음 내려놓을 때는 낸 타일 숫자 합이 30 이상이어야 해요(등록).",
+         "등록 후에는 바닥에 깔린 조합을 쪼개고 붙여 새로 짜도 돼요. 단, 차례가 끝날 때 바닥의 모든 조합이 규칙에 맞아야 해요.",
+         "낼 게 없거나 내기 싫으면 타일 1개를 가져오고 차례를 넘겨요.",
+         "조커는 어떤 숫자·색으로도 쓸 수 있어요."],
+  win:"손에 있는 타일을 가장 먼저 다 내려놓은 사람이 이겨요.",
+  tip:"바닥 조합을 재배치하는 게 핵심이에요. 시간 제한(한 차례 1분)을 두면 훨씬 박진감 있어요."},
+ {id:"splendor",name:"스플렌더",copies:2,min:2,max:4,time:"30분",mins:30,age:"10세+",level:2,genre:["전략"],
+  one:"보석 토큰을 모아 광산·상점 카드를 사고, 귀족을 모셔 15점을 먼저 만들어요.",
+  setup:"개발 카드를 레벨별로 4장씩 펼치고, 귀족 타일을 (인원+1)장 놓아요. 보석 토큰은 2인 4개, 3인 5개, 4인 7개씩 색마다 둬요(황금은 5개).",
+  steps:["내 차례에는 넷 중 하나만 해요.",
+         "① 서로 다른 색 보석 3개 가져오기",
+         "② 같은 색 보석 2개 가져오기 (그 색이 4개 이상 남아 있을 때만)",
+         "③ 카드 1장 찜하기 + 황금 토큰 1개 받기 (찜은 최대 3장)",
+         "④ 카드 1장 사기 — 내가 가진 카드의 보석 그림은 영구 할인이 돼요.",
+         "보석 토큰은 10개까지만 가질 수 있어요. 할인 조건을 채우면 차례 끝에 귀족이 자동으로 와서 3점을 줘요."],
+  win:"누군가 15점에 도달하면 그 라운드를 끝까지 하고, 점수가 가장 높은 사람이 이겨요.",
+  tip:"초반엔 점수 없는 싼 카드로 할인부터 쌓는 게 유리해요."},
+ {id:"halligalli",name:"할리갈리",copies:3,coming:1,min:2,max:6,time:"15분",mins:15,age:"6세+",level:1,genre:["순발력"],
+  one:"펼쳐진 과일 중 같은 과일이 딱 5개가 되면 종을 ‘땡!’",
+  setup:"과일 카드를 모두 똑같이 나눠 뒤집은 채로 내 앞에 쌓아요. 가운데에 종을 놓아요.",
+  steps:["돌아가며 내 더미 맨 위 카드를 바깥쪽으로 뒤집어 내 앞에 펼쳐요(새 카드가 이전 카드를 덮어요).",
+         "펼쳐진 카드들 중 한 종류 과일이 정확히 5개가 되는 순간 종을 쳐요.",
+         "제일 먼저 친 사람이 펼쳐진 카드를 모두 가져가 자기 더미 밑에 넣어요.",
+         "잘못 치면 다른 사람 모두에게 카드를 1장씩 줘요."],
+  win:"카드가 다 떨어지면 탈락, 마지막까지 카드를 가진 사람이 이겨요.",
+  tip:"카드는 상대 쪽으로 뒤집어야 공정해요. 종은 손바닥으로 세게!"},
+ {id:"marble",name:"모두의 마블",copies:1,min:2,max:4,time:"60분+",mins:60,age:"8세+",level:1,genre:["주사위","파티"],
+  one:"주사위를 굴려 도시를 사고 건물을 올려 통행료로 상대를 파산시켜요.",
+  setup:"말과 시작 자금을 나눠 받고 출발 칸에 서요. 은행 담당을 한 명 정해요.",
+  steps:["주사위 2개를 굴려 나온 만큼 이동해요. 더블이 나오면 한 번 더 굴려요.",
+         "주인 없는 도시는 사고, 내 도시에 다시 오면 건물을 올려 통행료를 높여요.",
+         "남의 도시에 서면 통행료를 내요. 돈이 모자라면 건물·땅을 팔아서 내요.",
+         "무인도·세계여행·황금열쇠 같은 특수 칸 효과를 따라요.",
+         "세부 금액과 특수 칸 효과는 박스 안 설명서 기준으로 해요."],
+  win:"다른 사람을 모두 파산시키거나, 설명서에 있는 독점 조건(라인·관광지 독점 등)을 달성하면 이겨요.",
+  tip:"시간이 길어지니 ‘1시간 뒤 총자산 1등 승리’ 같은 시간 제한을 정해 두면 좋아요."},
+ {id:"davinci",name:"다빈치 코드",copies:1,min:2,max:4,time:"15분",mins:15,age:"8세+",level:1,genre:["추리"],
+  one:"상대의 숨겨진 숫자 타일을 추리해서 하나씩 맞혀요.",
+  setup:"흑·백 타일(0~11)을 뒤집어 섞고 2~3인은 4개, 4인은 3개씩 가져가요. 왼쪽부터 작은 수→큰 수로 세우고, 같은 숫자면 검정을 왼쪽에 둬요.",
+  steps:["내 차례에 가운데에서 타일 1개를 가져와 혼자 확인해요.",
+         "상대 타일 하나를 가리키며 숫자를 말해요. (예: “그거 5!”)",
+         "맞히면 그 타일이 공개돼요. 계속 추리하거나, 멈추고 가져온 타일을 숨긴 채 내 줄 알맞은 자리에 꽂아요.",
+         "틀리면 가져온 타일을 공개한 채로 내 줄에 꽂아요.",
+         "조커(-)는 아무 자리에나 둘 수 있어요."],
+  win:"내 타일이 모두 공개되면 탈락. 마지막까지 숨긴 타일이 남은 사람이 이겨요.",
+  tip:"상대가 어디에 타일을 꽂는지 잘 보면 범위가 좁혀져요."},
+ {id:"dalmuti",name:"달무티",copies:1,min:5,max:8,time:"30분",mins:30,age:"8세+",level:1,genre:["카드","파티"],
+  one:"신분이 매 판 바뀌는 계급 카드게임. 숫자가 작을수록 강해요.",
+  setup:"카드는 1이 1장, 2가 2장 … 12가 12장, 어릿광대(조커) 2장이에요. 모두 나눠 줘요.",
+  steps:["선 플레이어가 같은 숫자 카드를 원하는 장수만큼 내요. (예: 9를 3장)",
+         "다음 사람은 같은 장수로 더 작은 숫자를 내거나 패스해요.",
+         "모두 패스하면 마지막에 낸 사람이 새로 시작해요. 어릿광대는 다른 카드와 함께 낼 때 같은 숫자로 쳐요.",
+         "먼저 손을 턴 순서대로 다음 판 신분이 정해져요: 위대한 달무티 → … → 위대한 노예.",
+         "다음 판 시작 때 위대한 노예는 가장 좋은 카드 2장을 달무티에게 바치고, 달무티는 아무 카드 2장을 돌려줘요(작은 달무티·작은 노예는 1장씩)."],
+  win:"정해진 판 수 동안 달무티 자리를 많이 지킨 사람이 승리! 보통 신분 놀이 자체를 즐겨요.",
+  tip:"자리도 신분 순서대로 바꿔 앉으면 더 재밌어요."},
+ {id:"citadels",name:"시타델",copies:1,min:2,max:8,time:"60분",mins:60,age:"10세+",level:3,genre:["전략","블러핑"],
+  one:"매 라운드 비밀 직업을 골라 서로 견제하며 가장 멋진 도시를 지어요.",
+  setup:"금화 2개와 건물 카드 4장씩 받아요. 왕관을 가진 사람이 먼저 직업을 고릅니다. (4~7명일 때 가장 재밌어요)",
+  steps:["직업 카드를 돌려가며 한 장씩 몰래 골라요: 1 암살자, 2 도둑, 3 마술사, 4 왕, 5 주교, 6 상인, 7 건축가, 8 용병.",
+         "번호 순서대로 호명해서 그 직업을 가진 사람이 차례를 가져요.",
+         "차례에는 금화 2개 받기, 또는 건물 카드 2장 보고 1장 갖기 중 하나를 하고, 건물 1채를 지을 수 있어요(건축가는 3채).",
+         "직업 능력을 써요. 암살자는 직업을 지목해 차례를 없애고, 도둑은 금화를 훔치고, 왕은 왕관을 가져가요.",
+         "같은 이름 건물은 두 번 지을 수 없어요."],
+  win:"누군가 건물을 7채(구판은 8채) 지으면 그 라운드 후 종료. 건물 비용 합 + 보너스(5색 다 모으기 등)가 가장 높은 사람이 이겨요.",
+  tip:"상대가 무엇을 원할지 읽고 ‘저 사람은 상인을 골랐겠다’ 같은 심리전이 핵심이에요."},
+ {id:"azul",name:"아줄",copies:1,min:2,max:4,time:"40분",mins:40,age:"8세+",level:2,genre:["전략"],
+  one:"포르투갈 타일을 골라 와 내 궁전 벽을 예쁘게(점수 높게) 채워요.",
+  setup:"공방 원판을 2인 5개, 3인 7개, 4인 9개 놓고 각각 타일 4개씩 올려요. 선 플레이어 표식은 가운데에 둬요.",
+  steps:["원판 하나에서 한 색 타일을 전부 가져가고, 남은 타일은 가운데로 밀어요. 가운데에서 한 색을 전부 가져가도 돼요(가운데 첫 손님은 선 표식 -1점도 함께).",
+         "가져온 타일은 왼쪽 ‘패턴 줄’ 한 줄에 놓아요. 한 줄에는 한 색만, 넘치는 타일은 바닥 줄(감점)로 가요.",
+         "모든 타일이 사라지면 라운드 끝. 꽉 찬 패턴 줄에서 1개씩 오른쪽 벽으로 옮기고, 붙어 있는 타일 수만큼 점수를 받아요.",
+         "바닥 줄 감점을 빼고 다음 라운드를 시작해요."],
+  win:"누군가 벽의 가로줄 한 줄을 완성하면 그 라운드 후 종료. 가로줄·세로줄·한 색 5개 완성 보너스까지 더해 최고점이 이겨요.",
+  tip:"상대가 받기 싫은 타일을 떠넘기는 것도 전략이에요."},
+ {id:"bombbusters",name:"봄버스터즈",copies:1,min:2,max:5,time:"30분",mins:30,age:"10세+",level:2,genre:["협력","추리"],
+  one:"모두가 한 팀! 서로의 숨은 전선 숫자를 추리해 폭탄을 해체해요.",
+  setup:"미션 카드를 골라 그에 맞게 전선 타일(1~12 파란 선 + 미션에 따라 노란·빨간 선)을 나눠요. 각자 거치대에 작은 수→큰 수로 숨겨 세워요.",
+  steps:["내 차례에 동료의 타일 하나를 가리키고, 내가 가진 숫자를 말해요. (“그거 7이죠?”)",
+         "맞으면 그 타일과 내 같은 숫자 타일을 함께 잘라(공개해) 내려놓아요.",
+         "틀리면 폭탄 타이머가 한 칸 올라가고, 동료가 그 타일의 진짜 숫자를 정보 토큰으로 알려줘요.",
+         "같은 숫자 남은 타일이 모두 내 손에 있으면 혼자 한꺼번에 자를 수 있어요.",
+         "빨간 선을 자르면 바로 펑! 말로 숫자를 직접 알려주는 건 금지예요."],
+  win:"모든 사람의 거치대를 비우면 해체 성공! 타이머가 끝까지 가거나 빨간 선을 자르면 실패예요.",
+  tip:"쉬운 미션부터 차례로 깨 나가는 방식이라 같은 멤버로 이어서 하기 좋아요."},
+ {id:"onenight",name:"한밤의 늑대인간",copies:1,min:3,max:10,time:"10분",mins:10,age:"9세+",level:2,genre:["마피아","추리","파티"],
+  one:"밤은 딱 한 번, 투표도 딱 한 번. 10분 만에 끝나는 정체 숨기기 게임.",
+  setup:"인원 수 + 3장의 역할 카드를 섞어 한 장씩 나누고 3장은 가운데에 엎어 둬요. 자기 카드만 몰래 확인해요.",
+  steps:["모두 눈을 감고, 진행자(또는 앱)가 순서대로 역할을 불러요.",
+         "늑대인간은 서로 확인, 예언자는 남의 카드나 가운데 2장 확인, 강도는 남과 카드 교환 후 확인, 말썽쟁이는 다른 두 사람 카드 교환, 주정뱅이는 가운데 카드와 교환…",
+         "아침이 되면 토론해요. 내 카드가 밤사이 바뀌었을 수도 있어요!",
+         "정해진 시간 뒤 셋, 둘, 하나에 동시에 한 명을 가리켜요. 가장 많이 지목된 사람이 처형돼요."],
+  win:"늑대인간이 한 명이라도 처형되면 마을 팀 승리, 아니면 늑대인간 팀 승리. 끝나면 모두 카드를 뒤집어 확인해요.",
+  tip:"공식 앱을 쓰면 밤 진행 멘트를 자동으로 읽어줘서 모두 참여할 수 있어요."},
+ {id:"harmonies",name:"하모니즈",copies:1,min:1,max:4,time:"30~45분",mins:40,age:"10세+",level:2,genre:["전략"],
+  one:"색 토큰으로 숲·산·강·들판을 만들고 동물들이 살 터전을 꾸며요.",
+  setup:"각자 개인 보드를 받고, 가운데 보드에 토큰 3개씩 채우고 동물 카드를 펼쳐요.",
+  steps:["가운데에서 토큰 묶음 하나(3개)를 가져와 내 보드에 모두 놓아요. (필수)",
+         "원하면 동물 카드 1장을 가져와요(최대 4장 보유).",
+         "카드에 그려진 지형 모양이 내 보드에 있으면 그 위에 동물 큐브를 올려요(선택).",
+         "지형 점수: 나무(갈색 위 초록), 산(회색 쌓기, 옆에 산이 있어야), 들판(노랑 덩어리), 강(파랑 연결 길이), 건물(빨강 위 세 가지 색 이웃)."],
+  win:"주머니가 비거나 누군가의 보드 빈칸이 2개 이하가 되면 그 라운드 후 종료. 지형 + 동물 점수가 가장 높은 사람이 이겨요.",
+  tip:"강을 길게 이어 두면 후반에 점수가 크게 뛰어요."},
+ {id:"ttr",name:"티켓 투 라이드",copies:1,min:2,max:5,time:"45~60분",mins:50,age:"8세+",level:2,genre:["전략"],
+  one:"기차 카드로 도시 사이 노선을 차지해 목적지 티켓을 완성해요.",
+  setup:"각자 기차 45개, 기차 카드 4장, 목적지 티켓 3장(최소 2장 유지)을 받아요. 기차 카드 5장을 공개해요.",
+  steps:["내 차례에 셋 중 하나를 해요.",
+         "① 기차 카드 2장 뽑기 (공개된 무지개 기관차를 가져오면 그것 1장만)",
+         "② 같은 색 카드를 노선 칸 수만큼 내고 노선 차지 → 길이에 따라 점수",
+         "③ 목적지 티켓 3장 보고 1장 이상 갖기"],
+  win:"누군가 기차가 2개 이하로 남으면 모두 한 차례씩 더 하고 끝. 완성한 티켓은 +, 못 한 티켓은 −. 가장 긴 연결 노선 보너스 10점까지 더해 최고점이 이겨요.",
+  tip:"긴 노선(5~6칸)이 칸당 점수가 훨씬 높아요."},
+ {id:"machikoro",name:"미니빌",copies:1,min:2,max:4,time:"30분",mins:30,age:"8세+",level:1,genre:["주사위"],
+  one:"주사위로 마을 수입을 얻어 건물을 늘리고 랜드마크 4개를 먼저 완성해요.",
+  setup:"각자 밀밭·빵집 카드와 동전 3개로 시작하고, 랜드마크 4장은 뒤집힌 채로 둬요.",
+  steps:["주사위 1개를 굴려요(기차역을 지으면 2개 선택 가능).",
+         "나온 숫자의 건물이 효과를 내요. 파랑: 누구 차례든 수입, 초록: 내 차례에만 수입, 빨강: 굴린 사람에게서 돈 뺏기, 보라: 내 차례 특수 효과.",
+         "그다음 건물 1개를 사거나 랜드마크 1개를 지어요(안 사도 돼요)."],
+  win:"기차역·쇼핑몰·놀이공원·라디오 방송국 랜드마크 4개를 가장 먼저 다 지은 사람이 이겨요.",
+  tip:"주사위 2개 확률이 가장 높은 7·8 건물을 노려 보세요."},
+ {id:"loveletter",name:"러브레터",copies:1,min:2,max:6,time:"20분",mins:20,age:"10세+",level:1,genre:["카드","추리"],
+  one:"카드 2장 중 1장을 버리며 효과를 쓰고, 공주에게 마지막까지 편지를 지켜요.",
+  setup:"카드를 섞어 한 장은 엎어서 빼고 각자 1장씩 받아요. (판본에 따라 2~4인 또는 2~6인)",
+  steps:["내 차례에 1장을 뽑아 손에 2장을 만들고, 그중 1장을 앞에 내며 효과를 써요.",
+         "경비병: 다른 사람의 카드를 추측(경비병 제외), 맞으면 그 사람 탈락.",
+         "사제는 남의 카드 보기, 남작은 비교해서 낮은 쪽 탈락, 시녀는 한 바퀴 보호, 왕자는 카드 버리게 하기, 왕은 카드 교환.",
+         "백작부인은 왕·왕자와 함께 있으면 반드시 내야 해요. 공주를 버리면 그대로 탈락!"],
+  win:"한 명만 남거나 덱이 떨어졌을 때 숫자가 가장 높은 사람이 호감 토큰을 받아요. 정해진 토큰 수(인원에 따라 다름)를 먼저 모으면 최종 승리.",
+  tip:"버려진 카드를 기억하면 경비병 추측이 쉬워져요."},
+ {id:"bang",name:"뱅!",copies:1,min:4,max:7,time:"40분",mins:40,age:"10세+",level:2,genre:["마피아","카드"],
+  one:"서부 총잡이들의 정체 숨기기 대결. 보안관만 정체가 공개돼요.",
+  setup:"역할(보안관·부관·무법자·배신자)을 비밀로 나누고 보안관만 공개해요. 캐릭터 카드의 총알 수만큼 생명과 카드를 받아요(보안관은 +1).",
+  steps:["카드 2장을 뽑아요.",
+         "‘뱅!’은 차례당 1번, 사거리 안 상대에게 쏴요. 맞은 사람은 ‘빗나감!’을 내거나 생명 1을 잃어요.",
+         "맥주로 생명 회복, 총·말·통 같은 장비는 앞에 깔아 둬요. 거리는 자리 수로 계산해요.",
+         "차례 끝에 남은 생명 수보다 많은 카드는 버려요."],
+  win:"보안관·부관은 무법자와 배신자를 모두 제거하면 승리. 무법자는 보안관을 쓰러뜨리면 승리. 배신자는 마지막에 혼자 살아남아야 승리.",
+  tip:"무법자를 잡으면 카드 3장 보상, 보안관이 부관을 쏘면 손패와 장비를 모두 잃어요."},
+ {id:"penguin",name:"펭귄 파티",copies:1,min:2,max:6,time:"15분",mins:15,age:"8세+",level:1,genre:["카드"],
+  one:"펭귄 카드로 피라미드를 쌓아요. 못 내면 벌점 칩!",
+  setup:"카드를 모두 나눠요. 각자 칩 몇 개로 시작해요(설명서 기준).",
+  steps:["맨 아랫줄은 아무 카드나 옆으로 이어 놓아요(최대 8장, 2인은 7장).",
+         "윗줄 카드는 바로 아래 두 장 사이에 놓고, 아래 두 장 중 하나와 색이 같아야 해요.",
+         "낼 카드가 없으면 그 라운드에서 빠지고, 손에 남은 카드 수만큼 칩을 받아요."],
+  win:"인원 수만큼 라운드를 한 뒤 벌점 칩이 가장 적은 사람이 이겨요.",
+  tip:"색이 다양한 손패를 끝까지 남겨 두는 게 안전해요."},
+ {id:"sushi",name:"초밥왕",copies:1,min:2,max:5,time:"10~15분",mins:12,age:"8세+",level:1,genre:["카드","순발력"],
+  one:"초밥 카드를 한 장씩 고르고 옆으로 넘기며 점수가 높은 조합을 완성하는 카드 게임.",
+  setup:"카드를 섞어 인원수에 맞게 나눠요(2명 10장, 3명 9장, 4명 8장, 5명 7장). 3라운드를 진행해요.",
+  steps:["모두 손패에서 카드 한 장을 몰래 골라 앞에 내려놓아요.",
+         "다 같이 동시에 공개하고, 남은 손패를 옆 사람에게 넘겨요.",
+         "받은 손패에서 또 한 장을 골라요. 손패가 다 떨어질 때까지 반복해요.",
+         "튀김 2장=5점, 사시미 3장=10점, 만두는 많이 모을수록 점수가 커져요(1·3·6·10·15점).",
+         "마키는 가장 많이 모은 사람 6점, 두 번째 3점. 니기리는 계란 1·연어 2·오징어 3점이고, 와사비 위에 올리면 3배예요.",
+         "젓가락 카드를 내고 다음 차례에 카드 2장을 가져올 수 있어요. 푸딩은 게임 끝에 가장 많이 모으면 +6, 가장 적으면 −6이에요."],
+  win:"3라운드를 마친 뒤 점수 합계가 가장 높은 사람이 이겨요.",
+  tip:"사시미나 튀김은 한 장이 모자라면 0점이에요. 남이 뭘 모으는지 보고 필요한 카드를 막아 보세요.",
+  note:"규칙은 널리 알려진 기본 규칙 기준이에요. 실물 설명서와 다르면 알려주세요."},
+ {id:"coyote",name:"코요태",copies:1,min:3,max:10,time:"15분",mins:15,age:"8세+",level:1,genre:["파티","블러핑"],
+  one:"내 숫자는 나만 못 봐요! 모두의 숫자 합을 눈치껏 부르는 이마 카드 게임.",
+  setup:"각자 생명 3개로 시작해요. 카드를 1장씩 받아 자기는 보지 않고 이마(머리띠)에 붙여요.",
+  steps:["돌아가며 ‘모든 카드 숫자의 합’ 이상일 거라 생각하는 수를 이전보다 크게 불러요.",
+         "앞사람이 너무 높게 불렀다고 생각되면 “코요태!”를 외쳐요.",
+         "카드를 모두 공개해 합을 계산해요. 특수 카드(×2, 최대값을 0으로, 물음표 등) 효과도 적용해요.",
+         "합이 부른 수보다 작으면 부른 사람이, 크거나 같으면 외친 사람이 생명 1개를 잃어요."],
+  win:"생명을 모두 잃으면 탈락, 마지막까지 남은 사람이 이겨요.",
+  tip:"다른 사람이 부르는 숫자로 내 카드를 추측해 보세요."},
+ {id:"lasvegas",name:"라스베가스",copies:1,min:2,max:5,time:"30분",mins:30,age:"8세+",level:1,genre:["주사위"],
+  one:"주사위를 카지노에 걸어 가장 큰 돈다발을 따요. 동점이면 둘 다 꽝!",
+  setup:"1~6번 카지노 판을 놓고, 각 카지노에 지폐를 합 5만 달러 이상이 되도록 깔아요. 각자 자기 색 주사위 8개를 받아요.",
+  steps:["내 주사위를 모두 굴려요.",
+         "나온 숫자 하나를 골라, 그 숫자 주사위를 전부 같은 번호 카지노에 놓아요.",
+         "모두 주사위를 다 쓸 때까지 돌아가며 반복해요.",
+         "카지노마다 주사위가 가장 많은 사람이 가장 큰 지폐를 가져가요. 같은 개수끼리는 서로 상쇄돼 아무도 못 가져가요."],
+  win:"4라운드 뒤 가진 돈이 가장 많은 사람이 이겨요.",
+  tip:"남의 1등을 동점으로 깨버리는 견제가 제일 재밌어요."},
+ {id:"chameleon",name:"카멜레온",copies:1,min:3,max:8,time:"15분",mins:15,age:"14세+",level:1,genre:["파티","추리"],
+  one:"모두가 아는 비밀 단어를 단 한 사람, 카멜레온만 몰라요.",
+  setup:"주제 카드(단어 16개)를 펼치고 코드 카드를 나눠요. 카멜레온 카드를 받은 사람만 비밀 단어를 몰라요.",
+  steps:["주사위 2개를 굴려 코드 카드로 비밀 단어 위치를 확인해요.",
+         "돌아가며 비밀 단어와 관련된 단어 하나씩 말해요. 너무 쉬우면 카멜레온에게 들키고, 너무 어려우면 의심받아요.",
+         "토론 후 카멜레온일 것 같은 사람을 동시에 지목해요."],
+  win:"카멜레온이 안 걸리면 카멜레온 승리. 걸려도 비밀 단어를 맞히면 카멜레온이 빠져나가요.",
+  tip:"주제 카드는 직접 만들어도 돼요. 성경 인물·교회 행사 같은 주제도 재밌어요!"},
+ {id:"onecard",name:"원카드",copies:1,min:2,max:6,time:"15분",mins:15,age:"7세+",level:1,genre:["카드","파티"],
+  one:"모양이나 숫자를 맞춰 내고, 공격 카드로 상대를 괴롭혀 먼저 손을 털어요.",
+  setup:"트럼프 카드 52장 + 조커를 섞어 7장씩 나누고, 1장을 펼쳐 시작해요.",
+  steps:["바닥 카드와 같은 모양 또는 같은 숫자를 1장 내요. 못 내면 1장을 뽑아요.",
+         "공격 카드: 2(2장), A(3장), 조커(5장 이상). 공격받으면 더 센 공격 카드로 막거나 그만큼 뽑아요.",
+         "7: 모양 바꾸기, J: 다음 사람 건너뛰기, Q: 방향 바꾸기, K: 한 장 더 내기.",
+         "카드가 1장 남으면 “원카드!”를 외쳐요. 못 외치고 걸리면 벌칙으로 뽑아요."],
+  win:"손에 든 카드를 가장 먼저 다 낸 사람이 이겨요.",
+  tip:"동네마다 하우스룰이 달라요. 시작 전에 공격 카드 규칙을 꼭 맞춰 두세요."},
+ {id:"angeldevil",name:"파뿌리 천사와 악마",yt:"파뿌리 천사와 악마 마피아 게임 하는법",copies:1,min:4,max:16,time:"5분",mins:5,age:"8세+",level:1,genre:["마피아","파티"],
+  one:"천사장이 한 명씩 지목해 악마를 찾아내는 마피아 게임. 한 판이 5분이면 끝나요.",
+  setup:"사람 수만큼 정체 카드를 준비해요. 악마 카드는 4~5명 1장, 6~8명 2장, 9~11명 3장, 12~16명 4장이고 나머지는 천사예요. 황천길 카드는 4~7명이면 8+·12+ 표시 카드를 빼고, 8~11명이면 12+ 카드만 빼고, 12명 이상이면 전부 섞어 가운데 더미로 놓아요. 정체 카드를 한 장씩 뒷면으로 나눠 확인한 뒤, 가장 최근에 착한 일을 한 사람이 천사장 카드를 받아요. 악마가 2명 이상이면 천사장이 “모두 눈을 감으세요 → 악마들은 눈을 떠 서로 확인하세요 → 다시 눈을 감으세요 → 모두 눈을 뜨세요”라고 말해요.",
+  steps:["천사장이 차례를 진행해요. 다 같이 이야기를 나누고, 천사장이 아무나 한 사람을 지목해요(결정은 천사장 마음).",
+         "지목된 사람은 즉시 황천길 카드 1장을 뽑아 공개하고, 카드에 적힌 지시를 따라요.",
+         "사망하면(특별한 지시가 없다면) 정체 카드를 공개해요. 부활하면 정체 카드를 공개하지 않고, 카드 지시를 따른 뒤 그 카드를 버려요.",
+         "사망한 사람도 게임에 계속 참여해 이야기할 수 있고, 차례가 오면 천사장도 할 수 있어요.",
+         "황천길 카드 처리가 끝나면 천사장 카드를 왼쪽 사람에게 넘겨요. 그 사람이 새 천사장이 돼요."],
+  win:"악마가 모두 사망해 정체가 공개되면 천사 팀 승리! 살아 있는 천사 수와 악마 수가 같아지면 악마 팀 승리!",
+  tip:"확장 규칙 ‘비밀 임무’(8명 이하 권장): 임무 카드를 한 장씩 받고 판마다 이긴 팀은 1점, 임무 성공 점수를 더해요. 누군가 5점 이상이 되면 전체 게임이 끝나요.",note:"설명서 기준으로 정리했어요."},
+ {id:"tichu",name:"티츄",copies:1,min:4,max:4,time:"60분+",mins:60,age:"12세+",level:3,genre:["카드","전략"],
+  one:"2:2 팀전 클라이밍 카드게임. 마작 같은 조합에 폭탄과 선언이 더해져요.",
+  setup:"마주 앉은 사람과 한 팀. 4색 2~A 52장 + 특수 4장(참새·개·봉황·용). 8장씩 먼저 받고 ‘그랜드 티츄’를 선언할지 정한 뒤 나머지를 받아 14장이 돼요. 세 사람에게 1장씩 카드를 넘겨요.",
+  steps:["참새(1)를 가진 사람이 먼저 내요.",
+         "낸 조합과 같은 형태로 더 높게 내요: 싱글, 페어, 연속 페어, 트리플, 풀하우스, 스트레이트(5장+).",
+         "모두 패스하면 마지막에 낸 사람이 그 묶음을 가져가고 새로 시작해요.",
+         "폭탄(같은 숫자 4장, 같은 무늬 스트레이트 5장+)은 언제든 끼어들어 이길 수 있어요.",
+         "첫 카드를 내기 전에 ‘티츄’(1등 하겠다)를 선언하면 성공 +100, 실패 −100. 그랜드 티츄는 ±200."],
+  win:"점수 카드: 5 = 5점, 10·K = 10점, 용 +25, 봉황 −25. 팀 둘이 1·2등을 하면 바로 200점. 먼저 1000점에 도달한 팀이 이겨요.",
+  tip:"개는 파트너에게 선을 넘겨주는 카드예요. 팀워크가 승패를 갈라요."},
+ {id:"clue",name:"클루",copies:1,min:3,max:6,time:"45분",mins:45,age:"8세+",level:2,genre:["추리","전략"],
+  one:"저택에서 벌어진 사건! 범인·흉기·장소 세 가지를 가장 먼저 맞히는 추리 보드게임.",
+  setup:"범인·흉기·장소 카드를 한 장씩 뽑아 비밀 봉투에 넣어요. 남은 카드는 모두에게 똑같이 나눠 주고, 각자 말을 시작 칸에 놓고 추리 노트를 준비해요.",
+  steps:["내 차례에 주사위를 굴려 나온 만큼 이동해 방에 들어가요.",
+         "방에 들어가면 ‘제안’을 해요: “범인은 ○○, 흉기는 △△, 장소는 지금 이 방”.",
+         "왼쪽 사람부터 차례로, 제안과 겹치는 카드가 있으면 한 장만 나에게만 몰래 보여 줘요. 없으면 다음 사람에게 넘겨요.",
+         "보여 준 카드와 안 보여 준 사람을 노트에 적으며 후보를 지워 나가요.",
+         "범인·흉기·장소를 확신하면 내 차례에 ‘최종 추리’를 해요. 봉투 속 카드를 나만 몰래 확인해요."],
+  win:"봉투 속 카드 세 장을 정확히 맞힌 사람이 이겨요. 틀리면 그 사람은 추리에서 빠지고, 남들의 제안에 카드를 보여 주는 일만 해요.",
+  tip:"내가 가진 카드는 이미 정답이 아니에요. 노트에 먼저 지워 두세요."},
+ {id:"ricochet",name:"리코셰 로봇",copies:1,min:2,max:8,time:"30분",mins:30,age:"10세+",level:2,genre:["순발력","전략"],
+  one:"벽에 부딪혀 멈추는 로봇! 목표 칸까지 가장 적은 이동으로 가는 길을 찾는 퍼즐 대결.",
+  setup:"판 위에 로봇 4대를 아무 칸에나 놓아요. 목표 칩을 섞어 뒤집어 두고, 모래시계를 준비해요.",
+  steps:["목표 칩 한 장을 뒤집어요. 칩의 색깔 로봇이 그 모양 칸에 들어가면 성공이에요.",
+         "모두 동시에 머릿속으로 로봇을 움직여 보며 가장 적은 이동 횟수를 찾아요. 로봇은 한 방향으로 벽이나 다른 로봇에 닿을 때까지 쭉 가요.",
+         "누군가 답을 찾으면 “○번!”이라고 외치고 모래시계를 뒤집어요. 시간 안에 더 적은 횟수를 찾으면 그 사람이 이어받아요.",
+         "시간이 끝나면 가장 적은 횟수를 말한 사람이 로봇을 직접 움직여 보여 줘요. 맞으면 칩을 가져가요. 틀리면 다음 순서 사람이 도전해요."],
+  win:"칩을 가장 많이 모은 사람이 이겨요.",
+  tip:"정답이 아니어도 로봇이 다른 로봇에 부딪혀 멈추는 걸 이용하면 길이 훨씬 짧아져요."},
+ {id:"muffin",name:"머핀타임",copies:1,min:2,max:6,time:"20분",mins:20,age:"7세+",level:1,genre:["파티","카드"],
+  one:"“머핀타임!”을 외치면 승리! 카드 10장을 손에 모으는 정신없는 파티 카드게임.",
+  setup:"카드를 섞어 한 사람당 3장씩 나눠 주고, 나머지는 더미로 쌓아요.",
+  steps:["내 차례에 카드 한 장을 뽑거나, 액션 카드·함정 카드를 내요.",
+         "액션 카드는 카드를 더 뽑거나 다른 사람의 카드를 뺏는 등 즉시 효과가 일어나요.",
+         "함정 카드는 비밀로 깔아 두면 다른 사람이 건드릴 때 발동해요.",
+         "반격 카드로 상대의 액션이나 함정을 막거나 되돌릴 수 있어요.",
+         "손에 카드가 10장이 되면 “머핀타임!”을 외쳐요."],
+  win:"손에 10장을 가진 채로 다음 내 차례를 맞이하면 승리해요. 그 사이 누가 카드를 뺏어 가면 다시 도전해요.",
+  tip:"카드 종류와 효과는 판마다 달라서 웃으며 즐기는 게 포인트예요. 에디션에 따라 카드 수와 인원이 달라요."},
+ {id:"kraken",name:"노터치 크라켄",copies:1,min:3,max:8,time:"20분",mins:20,age:"8세+",level:1,genre:["마피아","블러핑","카드"],
+  one:"보물을 찾는 탐험대와 크라켄을 깨우려는 스켈레톤! 정체를 숨기고 상자를 열어요.",
+  setup:"인원수에 맞게 역할 카드(탐험대·스켈레톤)를 한 장씩 비밀로 나눠 가져요. 탐험 카드(빈 상자·보물 상자·크라켄)는 한 사람당 5장씩 받아 확인한 뒤 섞어 뒷면으로 펼쳐요.",
+  steps:["액션 마커를 가진 사람이 다른 사람의 탐험 카드 한 장에 마커를 올려요.",
+         "카드를 열기 전에 모두 자유롭게 말해요: “여긴 보물 같아!” “아니야, 크라켄이야!”. 마커를 가진 사람은 열기 전에 대상을 바꿀 수 있어요.",
+         "카드를 공개해요. 열린 카드의 주인이 다음 마커를 받아요.",
+         "한 라운드가 끝나면 남은 카드를 모아 섞어 다시 나눠 주고, 총 4라운드까지 이어져요."],
+  win:"탐험대는 보물 상자를 모두 열면 이겨요. 스켈레톤은 크라켄을 열거나, 4라운드가 끝날 때까지 보물을 다 못 찾게 하면 이겨요.",
+  tip:"어느 카드가 보물인지는 주인만 알아요. 말을 잘 듣고 누가 거짓말을 하는지 살펴보세요."},
+ {id:"skullking",name:"스컬킹",copies:1,min:2,max:6,time:"30~45분",mins:40,age:"8세+",level:2,genre:["카드","전략","블러핑"],
+  one:"이번 라운드에 몇 번 이길지 미리 예언하는 해적 트릭테이킹 카드게임.",
+  setup:"10라운드로 진행해요. 라운드 번호만큼 카드를 한 사람당 나눠 줘요(1라운드 1장, 2라운드 2장 …).",
+  steps:["손패를 보고 이번 라운드에 내가 몇 번 이길지(0~) 동시에 예언해요.",
+         "선 플레이어가 카드 한 장을 내면 같은 무늬를 따라 내야 해요. 없으면 아무 카드나 내요.",
+         "검은색 카드(해적기)는 으뜸패라 다른 색을 이겨요. 해적은 숫자 카드와 인어를 이기고, 스컬킹은 해적을 이기고, 인어는 스컬킹을 이겨요.",
+         "가장 센 카드를 낸 사람이 트릭을 가져가고 다음 선이 돼요.",
+         "라운드가 끝나면 예언한 횟수와 이긴 횟수를 비교해 점수를 계산해요. 정확히 맞히면 보너스 점수, 어긋나면 감점이에요."],
+  win:"10라운드를 마치고 합산 점수가 가장 높은 사람이 이겨요.",
+  tip:"무리하게 많이 이기려 하지 말고, 정확히 맞히는 게 점수가 더 커요."},
+ {id:"balance",name:"밸런스게임",copies:1,min:2,max:12,time:"10분+",mins:15,age:"전연령",level:1,genre:["파티"],
+  one:"둘 중 하나만 골라야 한다면? 이유를 말하며 서로의 취향을 알아가는 질문 게임.",
+  setup:"준비물은 없어요. 질문 카드가 있으면 쓰고, 없으면 돌아가며 질문을 만들어도 돼요.",
+  steps:["진행자가 두 가지 선택지를 말해요. 예: “평생 라면만 먹기 vs 평생 치킨만 먹기”.",
+         "모두 동시에 손가락으로 1번, 2번을 골라요.",
+         "손가락 개수로 결과를 확인하고, 소수 의견인 사람부터 이유를 말해요.",
+         "서로 설득해 보고, 질문을 낸 사람은 다음 사람에게 진행을 넘겨요."],
+  win:"승패가 없는 대화 게임이에요. 다 같이 웃으며 즐기면 승리!",
+  tip:"너무 어려운 선택지를 고르면 대화가 더 풍성해져요."},
+ {id:"thegame",name:"더 게임",copies:1,min:1,max:5,time:"20분",mins:20,age:"8세+",level:2,genre:["카드","협력"],
+  one:"모두가 함께 2~99 카드를 4개의 더미에 끝까지 올려 놓는 협력 카드게임.",
+  setup:"더미 4개를 놓아요. 위로 올라가는 더미 2개(1부터), 내려가는 더미 2개(100부터). 카드를 섞어 한 사람당 6장(1명이면 8장, 2명이면 7장)을 받아요.",
+  steps:["내 차례에 손패에서 최소 2장 이상을 더미에 올려요.",
+         "올라가는 더미에는 더 큰 숫자를, 내려가는 더미에는 더 작은 숫자를 올려요.",
+         "예외: 딱 10 차이 나는 반대 숫자는 올릴 수 있어요(올라가는 더미에 현재보다 10 작은 카드).",
+         "카드는 말을 할 수 있지만 정확한 숫자는 말하면 안 돼요. “이 더미는 건드리지 마!” 같은 힌트만 줘요.",
+         "차례가 끝나면 손패가 정해진 수가 되도록 더미에서 뽑아요."],
+  win:"모든 카드를 더미에 올리면 모두가 승리해요. 누군가 카드를 2장 못 내면 모두 패배!",
+  tip:"숫자를 직접 말하지 않는 규칙을 지키는 게 이 게임의 재미예요."},
+ {id:"guryongtu",name:"구룡투",copies:1,min:2,max:2,time:"15분",mins:15,age:"8세+",level:1,genre:["전략","블러핑"],
+  one:"숫자가 적힌 용돌을 몰래 내서 큰 숫자가 이기는 2인 대결 게임.",
+  setup:"대결장을 가운데 놓고(건전지 AAA 3개, 시작 버튼 3초 누르기) 마주 앉아요. 각자 자기 색(빨강/파랑) 용돌 1~9 한 세트를 가져가요.",
+  steps:["두 사람이 용돌을 하나씩 숫자가 안 보이게 골라 대결장 입구에 올려요.",
+         "동시에 공개해서 큰 숫자가 이겨요. 같은 숫자면 무승부예요.",
+         "단, 예외! 1은 9를 이겨요.",
+         "쓴 용돌은 뒤집어 옆에 놓고 다시 쓰지 않아요.",
+         "이긴 사람이 다음 라운드 선공이에요(무승부면 선공 유지).",
+         "한 대결은 최대 9라운드. 라운드 승수가 더 많은 사람이 그 대결을 이겨요."],
+  win:"대결에서 먼저 2번 이기면 최종 승리!",
+  tip:"9는 1에게 질 수 있어요. 상대가 1을 아끼고 있을 때 9를 낼지 고민해 보세요.",
+  note:"규칙은 공개된 설명 자료 기준이에요. 실물 설명서와 다르면 알려주세요."}
+];
+let GAMES = BASE.map(g=>Object.assign({},g));
+const STATUS = {ok:"사용 가능",lent:"대여중",repair:"수리중",lost:"분실"};
+
+/* 규칙 영상이 있는 게임: 사이트 게임 id → 영상 파일 이름 */
+const VIDEO = {rummikub:"rummikub",splendor:"splendor",halligalli:"halligalli",marble:"marble",davinci:"davinci",dalmuti:"dalmuti",
+  citadels:"citadels",azul:"azul",bombbusters:"bombbusters",onenight:"werewolf",harmonies:"harmonies",ttr:"ttr",machikoro:"minivill",loveletter:"loveletter",
+  clue:"clue",ricochet:"ricochet",muffin:"muffin",kraken:"kraken",skullking:"skullking",balance:"balance",thegame:"thegame",sushi:"sushi",guryongtu:"guryongtu",angeldevil:"angeldevil",bang:"bang",penguin:"penguin",coyote:"coyote",lasvegas:"lasvegas",chameleon:"chameleon",onecard:"onecard",tichu:"tichu"};
+const PEOPLE = [2,3,4,5,6,7,8,"9+"];
+const GENRES = ["전략","파티","카드","추리","마피아","순발력","주사위","협력","블러핑"];
+const state = {q:"", people:null, genre:null};
+
+const $ = s => document.querySelector(s);
+const grid = $("#grid");
+
+function fits(g, p){
+  if(p===null) return true;
+  if(p==="9+") return g.max>=9;
+  return g.min<=p && g.max>=p;
+}
+function filtered(){
+  const q = state.q.trim().replace(/\s/g,"");
+  return GAMES.filter(g =>
+    (!q || g.name.replace(/\s/g,"").includes(q)) &&
+    fits(g, state.people) &&
+    (!state.genre || g.genre.includes(state.genre)));
+}
+function dots(n){ return '<span class="dots" aria-label="난이도 '+n+'/3">'+[1,2,3].map(i=>'<b class="'+(i<=n?'on':'')+'"></b>').join("")+'</span>'; }
+function players(g){ return g.min===g.max ? g.min+"명" : g.min+"~"+g.max+"명"; }
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+function render(){
+  const list = filtered();
+  $("#count").textContent = list.length===GAMES.length ? "전체 "+GAMES.length+"종" : list.length+"종이 조건에 맞아요";
+  const bar = ADMIN.on ? '<div class="adminbar"><b>관리자 모드</b><button type="button" id="addGame">＋ 게임 추가</button></div>' : '';
+  if(!list.length){ grid.innerHTML = bar+'<div class="empty">조건에 맞는 게임이 없어요. 인원이나 장르를 바꿔 보세요.</div>'; return; }
+  grid.innerHTML = bar + list.map(g => `
+    <button class="tile${g.hidden?' dim':''}" type="button" data-id="${g.id}">
+      <span class="copies">×${g.copies}${g.coming?'<i>+'+g.coming+' 예정</i>':''}</span>
+      <h3>${esc(g.name)}</h3>
+      <p class="one">${esc(g.one)}</p>
+      <div class="meta">
+        ${g.status&&g.status!=='ok'?'<span class="tag st">'+STATUS[g.status]+'</span>':''}${g.hidden?'<span class="tag st">숨김</span>':''}
+        ${VIDEO[g.id]?'<span class="tag v">▶ 영상</span>':''}
+        <span class="tag">${players(g)}</span>
+        <span class="tag">${g.time}</span>
+        <span class="tag">${dots(g.level)}</span>
+        ${g.genre.map(x=>'<span class="tag g">'+x+'</span>').join("")}
+      </div>
+    </button>`).join("");
+}
+
+function chips(){
+  const p = $("#people");
+  PEOPLE.forEach(n=>{
+    const b=document.createElement("button"); b.type="button"; b.className="chip"; b.id="p-"+n;
+    b.textContent = n+(n==="9+"?"":"명"); b.setAttribute("aria-pressed","false");
+    b.onclick=()=>{ state.people = state.people===n?null:n; sync(); };
+    p.appendChild(b);
+  });
+  const gr = $("#genres");
+  GENRES.forEach(n=>{
+    const b=document.createElement("button"); b.type="button"; b.className="chip"; b.id="g-"+n;
+    b.textContent=n; b.setAttribute("aria-pressed","false");
+    b.onclick=()=>{ state.genre = state.genre===n?null:n; sync(); };
+    gr.appendChild(b);
+  });
+}
+function sync(){
+  document.querySelectorAll("#people .chip").forEach((b,i)=>b.setAttribute("aria-pressed", String(PEOPLE[i]===state.people)));
+  document.querySelectorAll("#genres .chip").forEach((b,i)=>b.setAttribute("aria-pressed", String(GENRES[i]===state.genre)));
+  try{ localStorage.setItem("hb-people", JSON.stringify(state.people)); }catch(e){}
+  render();
+}
+
+function ytQuery(g){ return g.yt || (g.name.replace(/[!]/g,"") + " 보드게임 하는법"); }
+function ytUrl(g){ return "https://www.youtube.com/results?search_query=" + encodeURIComponent(ytQuery(g)); }
+let OPEN_ID=null;
+function open(id){
+  const g = GAMES.find(x=>x.id===id); if(!g) return;
+  OPEN_ID=id;EDITING=false;
+  $("#sheet").innerHTML = `
+    <header><h2 id="dtitle">${esc(g.name)}</h2><button class="close" type="button" aria-label="닫기" id="xbtn">×</button></header>
+    <p style="margin:0">${esc(g.one)}</p>
+    ${g.status&&g.status!=='ok'?'<p class="stnote">지금은 <b>'+STATUS[g.status]+'</b> 상태예요</p>':''}
+    ${ADMIN.on?adminPanel(g):''}
+    <div class="facts">
+      <div class="fact"><span>인원</span><b>${players(g)}</b></div>
+      <div class="fact"><span>시간</span><b>${g.time}</b></div>
+      <div class="fact"><span>나이</span><b>${g.age}</b></div>
+      <div class="fact"><span>보유</span><b>${g.copies}개${g.coming?' (+'+g.coming+' 예정)':''}</b></div>
+    </div>
+    ${VIDEO[g.id]
+      ? `<div class="vwrap" id="vwrap"><video id="vid" controls playsinline preload="metadata" poster="video/${VIDEO[g.id]}.jpg?v=3" src="video/${VIDEO[g.id]}.mp4?v=3"></video><button type="button" class="playbig" id="playbig" aria-label="영상 재생"><i>▶</i><span>영상 보기</span></button></div>
+      <a class="vopen" href="video/${VIDEO[g.id]}.mp4?v=3" target="_blank" rel="noopener">영상이 안 나오면 여기를 눌러 보세요 ↗</a>`
+      : `<div class="soon"><b>영상 준비중</b><span>곧 규칙 영상이 올라와요</span></div>`}
+    <div class="sec"><h4>준비</h4><p>${esc(g.setup)}</p></div>
+    <div class="sec"><h4>진행</h4><ol>${g.steps.map(s=>'<li>'+esc(s)+'</li>').join("")}</ol></div>
+    <div class="sec win"><h4>이기는 법</h4><p>${esc(g.win)}</p></div>
+    <div class="sec tip"><p><b>꿀팁</b> · ${esc(g.tip)}</p></div>
+    ${g.note?'<p class="note">※ '+esc(g.note)+'</p>':''}
+    <a class="ytlink" href="${ytUrl(g)}" target="_blank" rel="noopener noreferrer">유튜브에서 다른 영상 찾기 ↗</a>`;
+  if(ADMIN.on) wireAdmin(g);
+  const vd=$("#vid");
+  if(vd){vd.addEventListener("error",()=>{const w=$("#vwrap");if(w)w.outerHTML='<div class="soon"><b>영상을 불러오지 못했어요</b><span>잠시 뒤에 다시 열어 주세요</span></div>';},{once:true});}
+  const pb=$("#playbig");
+  if(pb&&vd){pb.onclick=()=>{pb.hidden=true;vd.play().catch(()=>{pb.hidden=false;});};vd.addEventListener("play",()=>{pb.hidden=true;});vd.addEventListener("ended",()=>{pb.hidden=false;});}
+  $("#xbtn").onclick=()=>{const v=$("#vid");if(v)v.pause();$("#dlg").close();};
+  const d=$("#dlg"); if(d.showModal) d.showModal(); else d.setAttribute("open","");
+  $("#sheet").scrollTop=0;
+}
+
+grid.addEventListener("click", e=>{ if(e.target.closest("#addGame")){ editSheet(null); return; } const t=e.target.closest(".tile"); if(t) open(t.dataset.id); });
+$("#dlg").addEventListener("click", e=>{ if(e.target.id==="dlg") e.currentTarget.close(); });
+$("#q").addEventListener("input", e=>{ state.q=e.target.value; render(); });
+
+let last=null;
+$("#holy").addEventListener("click", ()=>{
+  const avail = filtered().filter(g=>g.status==="ok" && g.copies>0 && !g.hidden);
+  const pool = avail.filter(g=>g.id!==last);
+  const src = pool.length?pool:avail;
+  const pick = $("#pick");
+  if(!src.length){ pick.hidden=false; pick.innerHTML="조건에 맞는 게임이 없어요. 인원이나 장르를 바꿔 보세요."; return; }
+  const g = src[Math.floor(Math.random()*src.length)]; last=g.id;
+  const who = state.people ? state.people+(state.people==="9+"?"":"명")+"이면 " : "";
+  pick.hidden=false; pick.classList.remove("show"); void pick.offsetWidth; pick.classList.add("show");
+  pick.innerHTML = `<span>${who}오늘은</span><strong>${esc(g.name)}</strong><span>${players(g)} · ${g.time}</span><button type="button" id="goPick">규칙 보기</button>`;
+  $("#goPick").onclick=()=>open(g.id);
+});
+
+function stats(){
+  const L = GAMES.filter(g=>!g.hidden);
+  const total = L.reduce((a,g)=>a+g.copies,0);
+  const coming = L.reduce((a,g)=>a+(g.coming||0),0);
+  $("#stats").innerHTML = `<span><b>${L.length}</b>종</span><span><b>${total}</b>개 보유</span><span><b>${coming}</b>개 받을 예정</span>`;
+}
+stats();
+
+
+/* ===== 관리자 (게임 현황 추가·수정·삭제) =====
+   - 편집 권한(공유 메뉴의 Editor 이상)이 있는 사람에게만 관리자 화면이 보여요.
+   - 변경 내용은 DB(inv: 기본 게임 수정값, custom: 추가한 게임)에 저장돼 모두에게 반영돼요. */
+const ADMIN = {can:false,on:false,db:null,inv:{},custom:{},q:{}};
+const num = (v,d)=>{const n=parseInt(v,10);return Number.isFinite(n)?n:d;};
+function normalize(g){
+  g.copies=Math.max(0,num(g.copies,1));g.coming=Math.max(0,num(g.coming,0));
+  g.min=Math.max(1,num(g.min,2));g.max=Math.max(g.min,num(g.max,g.min));
+  g.level=Math.min(3,Math.max(1,num(g.level,2)));
+  g.genre=Array.isArray(g.genre)?g.genre:[];g.steps=Array.isArray(g.steps)?g.steps:[];
+  g.time=g.time||"30분";g.age=g.age||"8세+";g.status=STATUS[g.status]?g.status:"ok";
+  ["name","one","setup","win","tip","note"].forEach(k=>{if(g[k]==null)g[k]="";});
+  return g;
+}
+function rebuild(){
+  const out=[];
+  BASE.forEach(b=>{const g=normalize(Object.assign({},b,ADMIN.inv[b.id]||{},{id:b.id}));if(g.hidden&&!ADMIN.on)return;out.push(g);});
+  Object.keys(ADMIN.custom).sort().forEach(id=>{const g=normalize(Object.assign({},ADMIN.custom[id],{id}));if(g.hidden&&!ADMIN.on)return;out.push(g);});
+  GAMES=out;
+}
+function refresh(){
+  rebuild();render();stats();
+  if($("#dlg").open && OPEN_ID && !EDITING){const g=GAMES.find(x=>x.id===OPEN_ID);if(g){const t=$("#sheet").scrollTop;open(OPEN_ID);$("#sheet").scrollTop=t;}}
+}
+let EDITING=false;
+function toast(msg){
+  let t=$("#toast");if(!t){t=document.createElement("div");t.id="toast";}
+  const host=$("#dlg").open?$("#dlg"):document.body;if(t.parentNode!==host)host.appendChild(t);
+  t.textContent=msg;t.classList.add("show");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("show"),2400);
+}
+const isCustom = id => id.startsWith("c_");
+function curDoc(id){ return (isCustom(id)?ADMIN.custom:ADMIN.inv)[id]||{}; }
+/* 같은 문서에는 한 번에 하나씩만 저장 */
+function saveDoc(id,data){
+  const col=isCustom(id)?"custom":"inv";
+  (isCustom(id)?ADMIN.custom:ADMIN.inv)[id]=data;
+  ADMIN.q[id]=(ADMIN.q[id]||Promise.resolve()).then(()=>ADMIN.db.collection(col).doc(id).set((isCustom(id)?ADMIN.custom:ADMIN.inv)[id]))
+    .catch(e=>{toast("저장하지 못했어요. 권한을 확인해 주세요.");});
+  return ADMIN.q[id];
+}
+function patchGame(id,patch){ return saveDoc(id,Object.assign({},curDoc(id),patch)); }
+function delDoc(id){
+  const col=isCustom(id)?"custom":"inv";
+  delete (isCustom(id)?ADMIN.custom:ADMIN.inv)[id];
+  ADMIN.q[id]=(ADMIN.q[id]||Promise.resolve()).then(()=>ADMIN.db.collection(col).doc(id).delete()).catch(()=>toast("삭제하지 못했어요."));
+  return ADMIN.q[id];
+}
+function adminPanel(g){
+  const custom=isCustom(g.id), changed=!custom && ADMIN.inv[g.id];
+  return `<div class="admin" id="admin">
+    <div class="adm-t">관리자 도구</div>
+    <div class="adm-row"><span>보유</span>
+      <div class="step"><button type="button" data-a="copies-">−</button><b id="a-copies">${g.copies}</b><button type="button" data-a="copies+">＋</button></div>
+      <span>받을 예정</span>
+      <div class="step"><button type="button" data-a="coming-">−</button><b id="a-coming">${g.coming||0}</b><button type="button" data-a="coming+">＋</button></div>
+    </div>
+    <div class="adm-row"><span>상태</span>
+      <div class="seg">${Object.keys(STATUS).map(k=>`<button type="button" data-st="${k}" aria-pressed="${g.status===k}">${STATUS[k]}</button>`).join("")}</div>
+    </div>
+    <div class="adm-row btns">
+      <button type="button" data-a="edit">✎ 정보 수정</button>
+      <button type="button" data-a="hide">${g.hidden?'목록에 다시 넣기':'목록에서 빼기'}</button>
+      ${custom?'<button type="button" class="danger" data-a="del">삭제</button>':''}
+      ${changed?'<button type="button" data-a="reset">원래대로</button>':''}
+    </div>
+  </div>`;
+}
+function wireAdmin(g){
+  const root=$("#admin");if(!root)return;
+  root.addEventListener("click",e=>{
+    const b=e.target.closest("button");if(!b)return;
+    const cur=GAMES.find(x=>x.id===g.id);if(!cur)return;
+    if(b.dataset.st){patchGame(g.id,{status:b.dataset.st});refresh();return;}
+    const a=b.dataset.a;
+    if(a==="copies+"||a==="copies-"){patchGame(g.id,{copies:Math.max(0,cur.copies+(a==="copies+"?1:-1))});refresh();}
+    else if(a==="coming+"||a==="coming-"){patchGame(g.id,{coming:Math.max(0,(cur.coming||0)+(a==="coming+"?1:-1))});refresh();}
+    else if(a==="hide"){patchGame(g.id,{hidden:!cur.hidden});toast(cur.hidden?"목록에 다시 넣었어요":"목록에서 뺐어요 (관리자에게만 보여요)");refresh();}
+    else if(a==="edit"){editSheet(g.id);}
+    else if(a==="reset"){delDoc(g.id);toast("원래 내용으로 되돌렸어요");refresh();}
+    else if(a==="del"){
+      if(b.dataset.arm){delDoc(g.id);$("#dlg").close();toast("삭제했어요");refresh();}
+      else{b.dataset.arm="1";b.textContent="정말 삭제? 한 번 더";setTimeout(()=>{if(b.isConnected){delete b.dataset.arm;b.textContent="삭제";}},3000);}
+    }
+  });
+}
+function editSheet(id){
+  const isNew=id===null;
+  const g=isNew?normalize({name:"",copies:1,coming:0,min:2,max:4,time:"30분",age:"8세+",level:2,genre:[],one:"",setup:"",steps:[],win:"",tip:"",note:""}):GAMES.find(x=>x.id===id);
+  if(!g)return;
+  EDITING=true;
+  const gs=new Set(g.genre);
+  const fld=(k,label,val,type="text",ph="")=>`<label class="f"><span>${label}</span><input id="f-${k}" type="${type}" value="${esc(val)}" placeholder="${ph}" ${type==="number"?'inputmode="numeric" min="0"':''}></label>`;
+  const area=(k,label,val,rows,ph="")=>`<label class="f"><span>${label}</span><textarea id="f-${k}" rows="${rows}" placeholder="${ph}">${esc(val)}</textarea></label>`;
+  $("#sheet").innerHTML=`
+    <header><h2>${isNew?'게임 추가':esc(g.name)+' 수정'}</h2><button class="close" type="button" aria-label="닫기" id="xbtn">×</button></header>
+    <div class="form">
+      ${fld("name","게임 이름",g.name,"text","예: 젠가")}
+      <div class="f2">${fld("copies","보유 수",g.copies,"number")}${fld("coming","받을 예정",g.coming||0,"number")}</div>
+      <div class="f2">${fld("min","최소 인원",g.min,"number")}${fld("max","최대 인원",g.max,"number")}</div>
+      <div class="f2">${fld("time","플레이 시간",g.time,"text","예: 30분")}${fld("age","나이",g.age,"text","예: 8세+")}</div>
+      <div class="f"><span>난이도</span><div class="seg" id="f-level">${[1,2,3].map(n=>`<button type="button" data-lv="${n}" aria-pressed="${g.level===n}">${["쉬움","보통","어려움"][n-1]}</button>`).join("")}</div></div>
+      <div class="f"><span>장르</span><div class="seg multi" id="f-genre">${GENRES.map(x=>`<button type="button" data-g="${x}" aria-pressed="${gs.has(x)}">${x}</button>`).join("")}</div></div>
+      ${area("one","한 줄 소개",g.one,2,"게임을 한 줄로 설명해 주세요")}
+      ${area("setup","준비",g.setup,3)}
+      ${area("steps","진행 (한 줄에 한 단계)",g.steps.join("\n"),6)}
+      ${area("win","이기는 법",g.win,2)}
+      ${area("tip","꿀팁",g.tip,2)}
+      ${area("note","메모 (선택)",g.note,2)}
+      <div class="formbtns"><button type="button" id="saveBtn" class="primary">${isNew?'추가하기':'저장'}</button><button type="button" id="cancelBtn">취소</button></div>
+    </div>`;
+  const dlg=$("#dlg");if(!dlg.open){dlg.showModal?dlg.showModal():dlg.setAttribute("open","");}
+  $("#sheet").scrollTop=0;
+  const done=()=>{EDITING=false;};
+  $("#xbtn").onclick=()=>{done();dlg.close();};
+  $("#cancelBtn").onclick=()=>{done();if(isNew)dlg.close();else open(g.id);};
+  $("#f-level").onclick=e=>{const b=e.target.closest("button");if(!b)return;document.querySelectorAll("#f-level button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));};
+  $("#f-genre").onclick=e=>{const b=e.target.closest("button");if(!b)return;b.setAttribute("aria-pressed",String(b.getAttribute("aria-pressed")!=="true"));};
+  $("#saveBtn").onclick=async()=>{
+    const v=k=>$("#f-"+k).value.trim();
+    const name=v("name");if(!name){toast("게임 이름을 입력해 주세요");$("#f-name").focus();return;}
+    const lv=document.querySelector("#f-level [aria-pressed=true]");
+    const data={name,copies:Math.max(0,num(v("copies"),1)),coming:Math.max(0,num(v("coming"),0)),min:Math.max(1,num(v("min"),2)),max:Math.max(1,num(v("max"),4)),
+      time:v("time")||"30분",age:v("age")||"8세+",level:lv?+lv.dataset.lv:2,
+      genre:[...document.querySelectorAll("#f-genre [aria-pressed=true]")].map(b=>b.dataset.g),
+      one:v("one"),setup:v("setup"),steps:v("steps").split("\n").map(x=>x.trim()).filter(Boolean),win:v("win"),tip:v("tip"),note:v("note")};
+    if(data.max<data.min)data.max=data.min;
+    const nid=isNew?"c_"+Date.now().toString(36):g.id;
+    if(isNew){await saveDoc(nid,data);}
+    else if(isCustom(nid)){await saveDoc(nid,Object.assign({},curDoc(nid),data));}
+    else{ /* 기본 게임: 원래 값과 다른 항목만 저장 */
+      const b=BASE.find(x=>x.id===nid),diff=Object.assign({},ADMIN.inv[nid]||{});
+      Object.keys(data).forEach(k=>{const same=JSON.stringify(data[k])===JSON.stringify(b[k]==null?"":b[k]);if(same)delete diff[k];else diff[k]=data[k];});
+      await saveDoc(nid,diff);
+    }
+    EDITING=false;toast(isNew?"게임을 추가했어요":"저장했어요");refresh();
+    if(isNew)$("#dlg").close();else open(nid);
+  };
+}
+async function initAdmin(){
+  let db=null,user=null;
+  try{ db=await claude.use("db"); user=await claude.use("user"); }catch(e){}
+  if(!db)return;
+  ADMIN.db=db;
+  try{ ADMIN.can=!!(user&&await user.canEdit()); }catch(e){}
+  ADMIN.on=ADMIN.can;
+  const sub=(col,key)=>db.collection(col).onSnapshot(snap=>{ADMIN[key]={};snap.docs.forEach(d=>{ADMIN[key][d.id]=d.data();});refresh();},()=>{});
+  sub("inv","inv");sub("custom","custom");
+  if(ADMIN.can){
+    const f=document.querySelector("footer");
+    const b=document.createElement("button");b.type="button";b.className="admtoggle";b.id="admToggle";b.textContent="관리자 모드 끄기";
+    b.onclick=()=>{ADMIN.on=!ADMIN.on;b.textContent=ADMIN.on?"관리자 모드 끄기":"관리자 모드 켜기";refresh();};
+    f.appendChild(document.createElement("br"));f.appendChild(b);
+  }
+  refresh();
+}
+
+rebuild();
+chips();
+initAdmin();
+try{ const s=JSON.parse(localStorage.getItem("hb-people")); if(s!==null && PEOPLE.includes(s)) state.people=s; }catch(e){}
+sync();
+</script>
+
+</body>
+</html>
